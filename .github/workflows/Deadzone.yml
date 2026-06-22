@@ -1,0 +1,33 @@
+name: Build Debug APK
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - uses: android-actions/setup-android@v3
+      - name: Unzip
+        run: unzip *.zip -d project
+      - name: Create env
+        run: echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" > project/.env
+      - name: Setup Gradle
+        run: cd project && gradle wrapper
+      - name: Create debug keystore
+        run: |
+          keytool -genkey -v -keystore project/debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
+      - name: Build APK
+        run: |
+          cd project
+          chmod +x gradlew
+          ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: debug-apk
+          path: project/app/build/outputs/apk/debug/*.apk
